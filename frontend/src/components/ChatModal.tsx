@@ -3,27 +3,41 @@ type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
 export default function ChatModal({ open, onClose }: { open: boolean; onClose: () => void }) {
     const [messages, setMessages] = useState<ChatMessage[]>(() => {
+
+        // Historique des messages persisté dans sessionStorage
         const saved = sessionStorage.getItem('chat:history');
         return saved ? JSON.parse(saved) : [];
     });
+
+    // Champ de texte pour l’entrée de l’utilisateur
     const [input, setInput] = useState('');
+
+    // Indique si le chat est en cours de chargement
     const [loading, setLoading] = useState(false);
+
+    // Indique si le chat est en cours d’annulation
     const abortRef = useRef<AbortController | null>(null);
     const chatBoxRef = useRef<HTMLDivElement | null>(null);
 
 
+    // URL de l’API backend
     const apiBase = useMemo(() => (import.meta as any).env?.VITE_BACKEND_URL ?? 'http://localhost:3001/api', []);
 
+    // Persiste l’historique des messages dans sessionStorage
     useEffect(() => {
         sessionStorage.setItem('chat:history', JSON.stringify(messages));
     }, [messages]);
 
+
+    // Auto scroll vers le bas à chaque nouveau message
     useEffect(() => {
         if (chatBoxRef.current) {
             chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
         }
     }, [messages, loading]);
 
+
+    // Ajoute un message assistant à l’historique
     const appendAssistant = useCallback((delta: string) => {
         setMessages(prev => {
             const next = [...prev];
@@ -35,6 +49,7 @@ export default function ChatModal({ open, onClose }: { open: boolean; onClose: (
         });
     }, []);
 
+    // Envoie un message utilisateur et gère le streaming
     async function send() {
         if (!input.trim() || loading) return;
         const userMsg: ChatMessage = { role: 'user', content: input.trim() };
@@ -42,6 +57,8 @@ export default function ChatModal({ open, onClose }: { open: boolean; onClose: (
         setMessages(prev => [...prev, userMsg, { role: 'assistant', content: '' }]);
         setInput('');
         setLoading(true);
+
+        // Tentative streaming d'abord
         try {
             // Tentative streaming d'abord
             const controller = new AbortController();

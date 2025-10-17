@@ -13,13 +13,17 @@ export async function postChat(req: Request, res: Response) {
     // Injecte un message système (guardrails), sans exposer la clé
     const msgs = [{ role: 'system' as const, content: SYSTEM_GUARDRAIL }, ...messages];
 
+    // Si le streaming est activé, on lance le streaming
     if (stream) {
         // SSE-ish headers (ou chunked)
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.setHeader('Transfer-Encoding', 'chunked');
 
+        // Lance chatStream qui itere sur chaque token eet withLatency pour la durée du streaming
         const { ms } = await withLatency(async () => {
             for await (const token of chatStream({ messages: msgs, model, temperature })) {
+
+                // Envoie chaque token immediatement
                 res.write(token);
             }
         });
